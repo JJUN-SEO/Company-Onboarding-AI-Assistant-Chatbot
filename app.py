@@ -4,9 +4,13 @@ from dotenv import load_dotenv
 import streamlit as st
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain.embeddings import OpenAIEmbeddings
+from langchain.embeddings import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 import logging
+from assistant import Assistant
+from prompts import SYSTEM_PROMPT, WELCOME_MESSAGE
+from langchain_groq import ChatGroq
+from gui import AssistantGUI
 
 
 if __name__ == "__main__":
@@ -32,7 +36,7 @@ if __name__ == "__main__":
             )
             splits = text_splitter.split_documents(docs)
 
-            embedding_function = OpenAIEmbeddings()
+            embedding_function = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
             persistent_path = "./data/vectorstore"
 
             vectorstore = Chroma.from_documents(
@@ -48,5 +52,27 @@ if __name__ == "__main__":
             return None
 
 
-    user_data = get_user_data()
-    vector_store = init_vector_store("data/umbrella_onboarding.pdf")
+    customer_data = get_user_data()
+    vector_store = init_vector_store("data/umbrella_corp_policies.pdf")
+
+    if vector_store is None:
+        st.error("Vector store could not be initialized. Please check the logs for more details.")
+        st.stop()
+
+    if "customer" not in st.session_state:
+        st.session_state.customer = customer_data
+    if "messages" not in st.session_state:
+        st.session_state.messages = [{"role": "ai", "content": WELCOME_MESSAGE}]
+
+    llm = ChatGroq(model="llama-3.1-8b-instant")
+
+    assistant = Assistant(
+        system_prompt=SYSTEM_PROMPT,
+        llm=llm,
+        message_history=st.session_state.messages,
+        employee_information=st.session_state.customer,
+        vector_store=vector_store,
+    )
+
+    gui = AssistantGUI(assistant)
+    gui.render()

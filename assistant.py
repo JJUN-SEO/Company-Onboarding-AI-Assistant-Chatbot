@@ -13,7 +13,7 @@ class Assistant:
         ):
             self.system_prompt = system_prompt
             self.llm = llm
-            self.message = message_history
+            self.messages = message_history
             self.vector_store = vector_store
             self.employee_information = employee_information
 
@@ -40,7 +40,7 @@ class Assistant:
              "retrieved_policy_information": self.vector_store.as_retriever(),
              "employee_information": lambda x: self.employee_information,
              "user_input": RunnablePassthrough(),
-             "conversation_history": lambda x: self.message,
+             "conversation_history": lambda x: self.messages,
             }
             | prompt
             | llm
